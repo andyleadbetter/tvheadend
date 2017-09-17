@@ -1,4 +1,4 @@
-/*
+    /*
  *  tvheadend, XMLTV exporter
  *  Copyright (C) 2015 Jaroslav Kysela
  *
@@ -21,6 +21,8 @@
 #include "webui.h"
 #include "channels.h"
 #include "http.h"
+#include "epg.h"
+
 
 /*
  *
@@ -87,6 +89,10 @@ http_xmltv_programme_one(htsbuf_queue_t *hq, const char *hostpath,
                          channel_t *ch, epg_broadcast_t *ebc)
 {
   char start[32], stop[32], ubuf[UUID_HEX_SIZE];
+
+  epg_genre_t *genre;
+  char buf[128];
+
   epg_episode_t *e = ebc->episode;
   lang_str_ele_t *lse;
 
@@ -112,6 +118,16 @@ http_xmltv_programme_one(htsbuf_queue_t *hq, const char *hostpath,
       htsbuf_append_and_escape_xml(hq, lse->str);
       htsbuf_append_str(hq, "</desc>\n");
     }
+
+  LIST_FOREACH(genre, &e->genre, link) {
+      if (genre && genre->code) {
+          epg_genre_get_str(genre, 0, 1, buf, sizeof(buf), "en");
+          htsbuf_qprintf(hq, " <category lang=\"en\">");
+          htsbuf_append_and_escape_xml(hq, buf);
+          htsbuf_append_str(hq, "</category>\n");
+      }
+  }
+
   htsbuf_append_str(hq, "</programme>\n");
 }
 
