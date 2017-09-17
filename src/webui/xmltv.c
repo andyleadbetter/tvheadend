@@ -67,9 +67,12 @@ static void
 http_xmltv_channel_add(htsbuf_queue_t *hq, const char *hostpath, channel_t *ch)
 {
   const char *icon = channel_get_icon(ch);
-  char ubuf[UUID_HEX_SIZE];
-  htsbuf_qprintf(hq, "<channel id=\"%s\">\n<display-name>",
-                 idnode_uuid_as_str(&ch->ch_id, ubuf));
+  int64_t number = channel_get_number(ch);
+  icon = 0;
+
+  htsbuf_qprintf(hq, "<channel id=\"%"PRId64"\">\n<display-name>",
+                 number);
+
   htsbuf_append_and_escape_xml(hq, channel_get_name(ch, ""));
   htsbuf_append_str(hq, "</display-name>\n");
   if (icon) {
@@ -88,7 +91,7 @@ static void
 http_xmltv_programme_one(htsbuf_queue_t *hq, const char *hostpath,
                          channel_t *ch, epg_broadcast_t *ebc)
 {
-  char start[32], stop[32], ubuf[UUID_HEX_SIZE];
+  char start[32], stop[32];
 
   epg_genre_t *genre;
   char buf[128];
@@ -99,8 +102,10 @@ http_xmltv_programme_one(htsbuf_queue_t *hq, const char *hostpath,
   if (e == NULL || e->title == NULL) return;
   http_xmltv_time(start, ebc->start);
   http_xmltv_time(stop, ebc->stop);
-  htsbuf_qprintf(hq, "<programme start=\"%s\" stop=\"%s\" channel=\"%s\">\n",
-                 start, stop, idnode_uuid_as_str(&ch->ch_id, ubuf));
+  int64_t number = channel_get_number( ch );
+
+  htsbuf_qprintf(hq, "<programme start=\"%s\" stop=\"%s\" channel=\"%"PRId64"\">\n",
+                 start, stop, number);
   RB_FOREACH(lse, e->title, link) {
     htsbuf_qprintf(hq, "  <title lang=\"%s\">", lse->lang);
     htsbuf_append_and_escape_xml(hq, lse->str);
