@@ -144,7 +144,7 @@ int dvr_entry_is_finished(dvr_entry_t *entry, int flags)
       (entry->de_sched_state != DVR_MISSED_TIME && dvr_get_filesize(entry, 0) == -1);   /* Removed externally? */
   int success = entry->de_sched_state == DVR_COMPLETED;
 
-  if (success && entry->de_last_error != SM_CODE_USER_REQUEST)
+  if (success && entry->de_last_error != SM_CODE_FORCE_OK)
       success = entry->de_last_error == SM_CODE_OK &&
                 entry->de_data_errors < DVR_MAX_DATA_ERRORS;
 
@@ -645,16 +645,18 @@ dvr_entry_status(dvr_entry_t *de)
       case SM_CODE_INVALID_TARGET:
         return N_("File not created");
       case SM_CODE_USER_ACCESS:
+        return N_("User access error");
       case SM_CODE_USER_LIMIT:
+        return N_("User limit reached");
       case SM_CODE_NO_SPACE:
-      case SM_CODE_USER_REQUEST:
         return streaming_code2txt(de->de_last_error);
       default:
         break;
     }
     if (dvr_get_filesize(de, 0) == -1 && !de->de_file_removed)
       return N_("File missing");
-    if(de->de_data_errors >= DVR_MAX_DATA_ERRORS) /* user configurable threshold? */
+    if(de->de_last_error != SM_CODE_FORCE_OK &&
+       de->de_data_errors >= DVR_MAX_DATA_ERRORS) /* user configurable threshold? */
       return N_("Too many data errors");
     if(de->de_last_error)
       return streaming_code2txt(de->de_last_error);
@@ -3770,10 +3772,11 @@ dvr_entry_set_rerecord(dvr_entry_t *de, int cmd)
  *
  */
 void
-dvr_entry_move(dvr_entry_t *de, int failed)
+dvr_entry_move(dvr_entry_t *de, int to_failed)
 {
   if(de->de_sched_state == DVR_COMPLETED)
-    if (dvr_entry_completed(de, failed ? SM_CODE_USER_REQUEST : SM_CODE_OK))
+    if (dvr_entry_completed(de, to_failed ? SM_CODE_USER_REQUEST :
+                                            SM_CODE_FORCE_OK))
       idnode_changed(&de->de_id);
 }
 
