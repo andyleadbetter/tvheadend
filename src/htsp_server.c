@@ -722,8 +722,10 @@ htsp_file_open(htsp_connection_t *htsp, const char *path, int fd, dvr_entry_t *d
   struct stat st;
 
   if (fd <= 0) {
+    pthread_mutex_unlock(&global_lock);
     fd = tvh_open(path, O_RDONLY, 0);
     tvhdebug(LS_HTSP, "Opening file %s -- %s", path, fd < 0 ? strerror(errno) : "OK");
+    pthread_mutex_lock(&global_lock);
     if(fd == -1)
       return htsp_error(htsp, N_("Unable to open file"));
   }
@@ -782,8 +784,11 @@ htsp_file_destroy(htsp_file_t *hf)
 {
   tvhdebug(LS_HTSP, "Closed opened file %s", hf->hf_path);
   LIST_REMOVE(hf, hf_link);
-  if (hf->hf_subscription)
+  if (hf->hf_subscription) {
+    pthread_mutex_lock(&global_lock);
     subscription_unsubscribe(hf->hf_subscription, UNSUBSCRIBE_FINAL);
+    pthread_mutex_unlock(&global_lock);
+  }
   free(hf->hf_path);
   close(hf->hf_fd);
   free(hf);
@@ -2867,7 +2872,9 @@ htsp_method_file_close(htsp_connection_t *htsp, htsmsg_t *in)
       dvr_entry_changed_notify(de);
   }
 
+  pthread_mutex_unlock(&global_lock);
   htsp_file_destroy(hf);
+  pthread_mutex_lock(&global_lock);
   return htsmsg_create_map();
 }
 
